@@ -1,0 +1,5 @@
+{
+  "name": "Smart Billing Assistant",
+  "description": "An AI-powered billing tool that generates professional invoices, spreadsheet-ready logs, and direct WhatsApp e-bill links from natural language or structured input.",
+  "requestFramePermissions": []
+}
