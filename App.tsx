@@ -35,23 +35,30 @@ const App: React.FC = () => {
   
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  // Check for deep link on mount
+  // Check for deep link on mount - Robust parsing for GH Pages
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const data = params.get('b');
-    if (data) {
-      try {
-        const decoded = JSON.parse(atob(data));
-        setStoreName(decoded.s || '');
-        setItems(decoded.i || []);
-        setDiscountPercent(decoded.d || 0);
-        setBillId(decoded.id || '');
-        setCustomerPhone(decoded.p || '');
-        setIsGuestMode(true);
-        setShowPreview(true);
-      } catch (e) {
-        console.error("Failed to decode bill data", e);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const data = params.get('b');
+      if (data) {
+        // Use a safe decoding approach
+        const decodedString = atob(data);
+        const decoded = JSON.parse(decodedString);
+        
+        if (decoded && typeof decoded === 'object') {
+          setStoreName(decoded.s || 'the silver lining');
+          setItems(decoded.i || []);
+          setDiscountPercent(decoded.d || 0);
+          setBillId(decoded.id || `BILL-${Date.now()}`);
+          setCustomerPhone(decoded.p || '');
+          setIsGuestMode(true);
+          setShowPreview(true);
+        }
       }
+    } catch (e) {
+      console.error("Failed to decode bill data. Path or data might be invalid.", e);
+      // Clean URL if it's broken to prevent stuck state
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
@@ -136,9 +143,19 @@ const App: React.FC = () => {
     setTimeout(() => setCopyStatus('idle'), 2000);
   };
 
+  // Improved for GitHub Pages subfolders
   const generateDeepLink = useCallback(() => {
-    const data = { s: storeName, i: items, d: discountPercent, id: billId, p: customerPhone };
-    return `${window.location.origin}${window.location.pathname}?b=${btoa(JSON.stringify(data))}`;
+    const data = { 
+      s: storeName, 
+      i: items.map(it => ({ name: it.name, price: it.price, quantity: it.quantity })), 
+      d: discountPercent, 
+      id: billId, 
+      p: customerPhone 
+    };
+    const encoded = btoa(JSON.stringify(data));
+    // Get the base URL without query parameters, ensuring it handles repo subfolders
+    const baseUrl = window.location.href.split('?')[0];
+    return `${baseUrl}?b=${encoded}`;
   }, [storeName, items, discountPercent, billId, customerPhone]);
 
   const handleShareLink = () => {
@@ -183,7 +200,7 @@ const App: React.FC = () => {
             <span>TOTAL</span>
             <span>₹{total.toFixed(2)}</span>
           </div>
-          <Button variant="secondary" className="w-full mt-8" onClick={() => window.location.href = window.location.origin + window.location.pathname}>New Bill</Button>
+          <Button variant="secondary" className="w-full mt-8" onClick={() => window.location.href = window.location.href.split('?')[0]}>New Bill</Button>
         </div>
       </div>
     );
