@@ -170,7 +170,13 @@ const App: React.FC = () => {
   const handleShareLink = () => {
     const link = generateDeepLink();
     const cleanPhone = customerPhone.replace(/[^0-9]/g, '');
-    const message = `Digital Invoice from *${storeName.toUpperCase()}*.%0A%0AView Bill: ${link}`;
+    
+    // Construct professional breakdown for WhatsApp
+    const itemsText = items.map(it => `${it.name} (x${it.quantity})`).join(', ');
+    const discountText = discountPercent > 0 ? `${discountPercent}% (₹${discountAmount.toFixed(2)})` : 'None';
+    
+    const message = `Invoice from *${storeName.toUpperCase()}*%0A--------------------%0A*Bill ID:* ${billId}%0A*Items:* ${itemsText}%0A*Discount:* ${discountText}%0A*Total:* ₹${total.toFixed(2)}%0A--------------------%0AView Digital Receipt: ${link}%0A%0AThank you!`;
+    
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
@@ -182,9 +188,25 @@ const App: React.FC = () => {
       const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'));
       if (blob) {
         const file = new File([blob], `Bill-${billId}.png`, { type: 'image/png' });
-        if (navigator.share) await navigator.share({ files: [file] });
+        if (navigator.share) {
+          await navigator.share({ 
+            files: [file],
+            title: `Bill from ${storeName}`,
+            text: `Invoice #${billId}`
+          });
+        } else {
+          // Fallback: download if sharing is not supported
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Bill-${billId}.png`;
+          a.click();
+        }
       }
-    } catch (e) { alert("Sharing failed."); }
+    } catch (e) { 
+      console.error(e);
+      alert("Sharing failed. Please try saving manually."); 
+    }
     finally { setIsSharing(false); }
   };
 
@@ -445,7 +467,10 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-all duration-300">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/20">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Invoice Preview</h3>
+              <div className="flex flex-col">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-tight">Digital E-Bill</h3>
+                <span className="text-[10px] font-bold text-slate-400">Preview & Send</span>
+              </div>
               <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full transition-all">
                 <X className="w-6 h-6 text-slate-400" />
               </button>
@@ -490,10 +515,10 @@ const App: React.FC = () => {
             </div>
             <div className="p-6 bg-white border-t border-slate-100 grid grid-cols-2 gap-4">
               <Button variant="secondary" className="w-full py-4 rounded-2xl" onClick={handleShareReceipt} disabled={isSharing}>
-                <Share2 className="w-4 h-4 mr-2" /> Save Image
+                <Share2 className="w-4 h-4 mr-2" /> Share Image
               </Button>
               <Button variant="success" className="w-full py-4 rounded-2xl shadow-lg shadow-emerald-200" onClick={handleShareLink}>
-                <LinkIcon className="w-4 h-4 mr-2" /> Send via WA
+                <LinkIcon className="w-4 h-4 mr-2" /> Send E-Bill (WA)
               </Button>
             </div>
           </div>
