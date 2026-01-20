@@ -4,6 +4,7 @@ export interface Item {
   name: string;
   price: number;
   quantity: number;
+  discount: number; // Percentage discount per item
 }
 
 export interface Invoice {
