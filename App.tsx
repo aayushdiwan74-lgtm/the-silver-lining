@@ -20,7 +20,7 @@ const App: React.FC = () => {
   const [isGuestMode, setIsGuestMode] = useState(false);
   
   const [storeName, setStoreName] = useState(() => {
-    return localStorage.getItem('billing_store_name') || 'THE SILVER LINING';
+    return localStorage.getItem('billing_store_name') || 'SMART STORE';
   });
   
   const [customerPhone, setCustomerPhone] = useState('');
@@ -30,7 +30,7 @@ const App: React.FC = () => {
   const [isSharing, setIsSharing] = useState(false);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [textBillCopyStatus, setTextBillCopyStatus] = useState(false);
-  const [billId, setBillId] = useState(`TSL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [billId, setBillId] = useState(`BILL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
   
   // Manual Entry Form State
   const [newItemName, setNewItemName] = useState('');
@@ -63,7 +63,7 @@ const App: React.FC = () => {
       if (data) {
         const decoded = JSON.parse(atob(data));
         if (decoded && typeof decoded === 'object') {
-          setStoreName(decoded.s || 'THE SILVER LINING');
+          setStoreName(decoded.s || 'SMART STORE');
           setItems(decoded.i || []);
           setGlobalDiscountPercent(decoded.gd || 0);
           setBillId(decoded.id || `BILL-${Date.now()}`);
@@ -144,7 +144,7 @@ const App: React.FC = () => {
     setItems([]);
     setCustomerPhone('');
     setGlobalDiscountPercent(0);
-    setBillId(`TSL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setBillId(`BILL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -181,21 +181,34 @@ const App: React.FC = () => {
 
   const getBillText = useCallback((isEncoded = false) => {
     const link = generateDeepLink();
-    const itemsText = items.map(it => {
-      const discountedPrice = it.price * (1 - it.discount / 100);
-      return `• ${it.name} (x${it.quantity}) @ ₹${discountedPrice.toFixed(2)}${it.discount > 0 ? ` [${it.discount}% OFF]` : ''}`;
-    }).join(isEncoded ? '%0A' : '\n');
-    
-    const totalDiscount = itemsDiscountAmount + globalDiscountAmount;
-    const divider = isEncoded ? '--------------------' : '--------------------';
     const nl = isEncoded ? '%0A' : '\n';
     
-    return `Invoice from *${storeName.toUpperCase()}*${nl}${divider}${nl}*Bill ID:* ${billId}${nl}*Date:* ${new Date().toLocaleDateString()}${nl}${nl}*Items:*${nl}${itemsText}${nl}${divider}${nl}*Gross Amount:* ₹${subtotalBeforeDiscounts.toFixed(2)}${nl}*Total Savings:* ₹${totalDiscount.toFixed(2)}${nl}*FINAL PAYABLE:* ₹${finalTotal.toFixed(2)}${nl}${divider}${nl}View Digital Receipt:${nl}${link}${nl}${nl}Thank you for shopping with us!`;
-  }, [storeName, items, billId, subtotalBeforeDiscounts, itemsDiscountAmount, globalDiscountAmount, finalTotal, generateDeepLink]);
+    const itemsText = items.map(it => {
+      return `${it.name} (x${it.quantity})`;
+    }).join(isEncoded ? ', ' : ', ');
+    
+    const totalDiscount = itemsDiscountAmount + globalDiscountAmount;
+    
+    // Strictly adhering to the requested format:
+    // Invoice from [My Store]%0A--------------------%0AItems: [Items]%0ADiscount: [Discount]%0ATotal: [Total]%0AThank you!
+    
+    let text = `Invoice from ${storeName.toUpperCase()}${nl}`;
+    text += `--------------------${nl}`;
+    text += `Items: ${itemsText}${nl}`;
+    text += `Discount: ₹${totalDiscount.toFixed(2)}${nl}`;
+    text += `Total: ₹${finalTotal.toFixed(2)}${nl}`;
+    text += `Thank you!${nl}${nl}`;
+    text += `View Digital Copy: ${link}`;
+    
+    return text;
+  }, [storeName, items, itemsDiscountAmount, globalDiscountAmount, finalTotal, generateDeepLink]);
 
   const handleShareLink = () => {
+    // International format logic: remove any +, -, or spaces
     const cleanPhone = customerPhone.replace(/[^0-9]/g, '');
     const message = getBillText(true);
+    
+    // Direct WhatsApp Link Logic
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
   };
 
@@ -311,7 +324,7 @@ const App: React.FC = () => {
           {/* Customer Info */}
           <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Phone className="w-3 h-3" /> Billing Details
+              <Phone className="w-3 h-3" /> Customer Details
             </h2>
             <div className="space-y-3">
               <div className="group">
@@ -319,8 +332,8 @@ const App: React.FC = () => {
                 <input type="text" value={storeName} onChange={e => setStoreName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium" />
               </div>
               <div className="group">
-                <label className="text-[11px] font-bold text-slate-500 uppercase mb-1 block">Customer Phone (WhatsApp)</label>
-                <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium" placeholder="91XXXXXXXXXX" />
+                <label className="text-[11px] font-bold text-slate-500 uppercase mb-1 block">WhatsApp Number (International)</label>
+                <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium" placeholder="e.g. 919876543210" title="Include country code, no + or -" />
               </div>
             </div>
           </section>
@@ -609,7 +622,7 @@ const App: React.FC = () => {
                   <Share2 className="w-4 h-4 mr-2" /> Share Image
                 </Button>
                 <Button variant="success" className="w-full py-5 rounded-2xl shadow-xl shadow-emerald-200 font-black text-xs uppercase tracking-widest" onClick={handleShareLink}>
-                  <LinkIcon className="w-4 h-4 mr-2" /> Send via WA
+                  <LinkIcon className="w-4 h-4 mr-2" /> Send E-Bill (WA)
                 </Button>
               </div>
               <button 
